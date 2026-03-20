@@ -25,13 +25,17 @@ Score your Claude Code setup on a 100-point rubric across 9 dimensions.
 ## Install
 
 ```bash
+# macOS (recommended)
+brew install pipx && pipx install claude-bench
+
+# Linux / venv
 pip install claude-bench
 ```
 
 Or run from source:
 
 ```bash
-git clone https://github.com/arseniigrebenshchikov/claude-bench.git
+git clone https://github.com/Evilent4/claude-bench.git
 cd claude-bench/scanner
 pip install -e .
 ```
