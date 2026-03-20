@@ -21,6 +21,8 @@ class ScanResult:
     has_acceptance_criteria: bool = False
     has_tdd: bool = False
     has_deviation_protocol: bool = False
+    has_ci_config: bool = False
+    has_test_suite: bool = False
 
     # Autonomy
     has_crash_recovery: bool = False
@@ -28,6 +30,7 @@ class ScanResult:
     has_parallel_orchestration: bool = False
     has_self_improvement: bool = False
     has_session_chaining: bool = False
+    has_cost_tracking: bool = False
 
     # Safety
     hook_count: int = 0
@@ -35,6 +38,7 @@ class ScanResult:
     has_scope_enforcement: bool = False
     has_memory_protection: bool = False
     has_secrets_scanning: bool = False
+    has_rate_limiting: bool = False
 
     # Memory
     has_session_persistence: bool = False
@@ -42,6 +46,7 @@ class ScanResult:
     has_learning_extraction: bool = False
     has_pre_compact_save: bool = False
     has_lessons_system: bool = False
+    has_semantic_search: bool = False
 
     # Skills
     skill_count: int = 0
@@ -98,16 +103,7 @@ def _file_heading_matches(path: Path, keywords: list[str], max_lines: int = 50) 
 
 
 def _count_hooks(path: Path) -> tuple[int, bool, bool, bool]:
-    """Parse hooks.json and return (hook_count, has_destructive_blocking, has_scope_enforcement, has_memory_protection).
-
-    Supports multiple formats:
-    - {"hooks": {"EventName": [...]}}  (Claude Code native format)
-    - {"EventName": [...]}             (flat format)
-    - [...]                            (list format)
-
-    Each event array contains matcher entries, each with a nested "hooks" list of
-    individual hook definitions. We count the individual hooks and scan their content.
-    """
+    """Parse hooks.json and return (hook_count, has_destructive_blocking, has_scope_enforcement, has_memory_protection)."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError, UnicodeDecodeError):
@@ -132,11 +128,9 @@ def _count_hooks(path: Path) -> tuple[int, bool, bool, bool]:
             has_memory = True
 
     def _process_event_entries(entries: list) -> None:
-        """Process an array of matcher entries for one event type."""
         nonlocal hook_count
         for entry in entries:
             if isinstance(entry, dict):
-                # Each entry may have a nested "hooks" list of individual hooks
                 inner_hooks = entry.get("hooks", [])
                 if isinstance(inner_hooks, list) and inner_hooks:
                     hook_count += len(inner_hooks)
@@ -144,7 +138,6 @@ def _count_hooks(path: Path) -> tuple[int, bool, bool, bool]:
                         s = json.dumps(ih).lower() if isinstance(ih, dict) else str(ih).lower()
                         _check_hook_str(s)
                 else:
-                    # Entry itself is a hook definition
                     hook_count += 1
                     s = json.dumps(entry).lower()
                     _check_hook_str(s)
@@ -156,7 +149,6 @@ def _count_hooks(path: Path) -> tuple[int, bool, bool, bool]:
             _process_event_entries(data)
         return hook_count, has_destructive, has_scope, has_memory
 
-    # Unwrap {"hooks": {...}} wrapper if present
     events = data.get("hooks", data) if "hooks" in data and isinstance(data["hooks"], dict) else data
 
     for _event, entries in events.items():
@@ -269,7 +261,6 @@ def scan_directory(target: Path) -> ScanResult:
 
     result.has_per_agent_memory = (target / "memory" / "agents").is_dir()
 
-    # Also check rules for model tier mentions
     rules_dir = target / ".claude" / "rules"
     if rules_dir.is_dir():
         for rf in rules_dir.glob("*.md"):
@@ -307,6 +298,23 @@ def scan_directory(target: Path) -> ScanResult:
 
     result.review_stages = len(stages_found)
 
+    # CI/CD config
+    ci_paths = [
+        target / ".github" / "workflows",
+        target / ".gitlab-ci.yml",
+        target / ".circleci",
+    ]
+    result.has_ci_config = any(p.exists() for p in ci_paths)
+
+    # Test suite at root
+    test_dirs = [target / "tests", target / "test", target / "__tests__"]
+    for td in test_dirs:
+        if td.is_dir():
+            test_files = list(td.rglob("test_*.py")) + list(td.rglob("*.test.*")) + list(td.rglob("*_test.py"))
+            if test_files:
+                result.has_test_suite = True
+                break
+
     # --- Autonomy ---
     scripts_dir = target / "scripts"
     script_files: list[Path] = []
@@ -328,8 +336,9 @@ def scan_directory(target: Path) -> ScanResult:
             result.has_self_improvement = True
         if _file_contains_keywords(af, ["flow", "chain", "session"]):
             result.has_session_chaining = True
+        if _file_contains_keywords(af, ["cost_track", "cost tracking", "token_cost", "budget_limit"]):
+            result.has_cost_tracking = True
 
-    # Also check hooks scripts
     hooks_scripts_dir = target / "hooks" / "scripts"
     if hooks_scripts_dir.is_dir():
         for hs in hooks_scripts_dir.iterdir():
@@ -355,7 +364,6 @@ def scan_directory(target: Path) -> ScanResult:
         result.has_scope_enforcement = result.has_scope_enforcement or h_scope
         result.has_memory_protection = result.has_memory_protection or h_mem
 
-    # Check rules for safety keywords
     for md in all_md_files:
         if _file_contains_keywords(md, ["scope", "permission", "enforce", "tool scoping"]):
             result.has_scope_enforcement = True
@@ -363,6 +371,15 @@ def scan_directory(target: Path) -> ScanResult:
             result.has_memory_protection = True
         if _file_contains_keywords(md, ["secret", "scan", "hardcoded"]):
             result.has_secrets_scanning = True
+
+    # Rate limiting
+    all_check_files = list(all_md_files) + script_files
+    if hooks_scripts_dir.is_dir():
+        all_check_files.extend(f for f in hooks_scripts_dir.iterdir() if f.is_file())
+    for f in all_check_files:
+        if _file_contains_keywords(f, ["rate_limit", "rate limit", "ratelimit"]):
+            result.has_rate_limiting = True
+            break
 
     # --- Memory ---
     result.has_session_persistence = (target / "memory" / "sessions").is_dir()
@@ -375,7 +392,6 @@ def scan_directory(target: Path) -> ScanResult:
     result.has_learning_extraction = (target / "memory" / "learn").is_dir()
     result.has_lessons_system = (target / "memory" / "lessons.md").is_file()
 
-    # Pre-compact save detection
     for md in all_md_files:
         if _file_contains_keywords(md, ["pre-compact", "compaction"]):
             result.has_pre_compact_save = True
@@ -384,6 +400,15 @@ def scan_directory(target: Path) -> ScanResult:
         for hs in hooks_scripts_dir.iterdir():
             if hs.is_file() and _file_contains_keywords(hs, ["pre-compact", "compaction", "pre_compact"]):
                 result.has_pre_compact_save = True
+
+    # Semantic search
+    tools_dir = target / "tools"
+    for check_dir in [tools_dir, scripts_dir]:
+        if check_dir and check_dir.is_dir():
+            for f in check_dir.iterdir():
+                if f.is_file() and _file_contains_keywords(f, ["semantic", "vector", "embedding", "cosine_sim"]):
+                    result.has_semantic_search = True
+                    break
 
     # --- Skills ---
     if skills_dir.is_dir():
@@ -417,13 +442,11 @@ def scan_directory(target: Path) -> ScanResult:
     attack_skill = target / "skills" / "attack"
     result.has_attack_playbooks = attack_skill.is_dir() or (target / "attack").is_dir()
 
-    # Scheduled scans
     for md in all_md_files:
         if _file_contains_keywords(md, ["scheduled scan", "cron", "audit"]):
             result.has_scheduled_scans = True
             break
 
-    # Delta reporting
     for f in script_files + list(all_md_files):
         if _file_contains_keywords(f, ["delta", "diff report"]):
             result.has_delta_reporting = True
@@ -435,7 +458,6 @@ def scan_directory(target: Path) -> ScanResult:
         all_names.extend(f.stem for f in agent_files)
     if scripts_dir.is_dir():
         all_names.extend(f.stem for f in script_files)
-    tools_dir = target / "tools"
     if tools_dir.is_dir():
         all_names.extend(f.stem for f in tools_dir.iterdir() if f.is_file())
     if skills_dir.is_dir():
@@ -443,7 +465,6 @@ def scan_directory(target: Path) -> ScanResult:
 
     result.has_domain_specialisation, result.domain_detected = _detect_domain(all_names)
 
-    # Custom pipelines
     if tools_dir.is_dir() and any(
         _file_contains_keywords(f, ["pipeline", "ingest", "extract", "transform"])
         for f in tools_dir.iterdir() if f.is_file() and f.suffix in (".py", ".sh")

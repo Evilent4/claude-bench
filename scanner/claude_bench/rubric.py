@@ -20,10 +20,14 @@ MAX_SCORES: dict[str, int] = {
 def score_agents(result: ScanResult) -> int:
     """Agents dimension: max 15."""
     score = 0
-    # 1pt per 5 agents, max 5
-    score += min(result.agent_count // 5, 5)
-    # Model tiering: 3 tiers=3, 2=2, 1=1, 0=0
-    score += min(len(result.model_tiers), 3)
+    # 1pt per 10 agents, max 6
+    score += min(result.agent_count // 10, 6)
+    # Model tiering: 3 tiers=2, 2=1, 1=0
+    tiers = len(result.model_tiers)
+    if tiers >= 3:
+        score += 2
+    elif tiers >= 2:
+        score += 1
     # Tool scoping +4
     if result.has_tool_scoping:
         score += 4
@@ -36,22 +40,28 @@ def score_agents(result: ScanResult) -> int:
 def score_quality(result: ScanResult) -> int:
     """Quality dimension: max 15."""
     score = 0
-    # Review pipeline: multi-stage(3+)=5, single=3, none=0
+    # Review pipeline: multi-stage(3+)=4, single=3, none=0
     if result.review_stages >= 3:
-        score += 5
+        score += 4
     elif result.has_review_pipeline:
         score += 3
-    # Veto +3 (indicated by review pipeline with stages)
+    # Veto authority +2
     if result.has_review_pipeline and result.review_stages >= 2:
-        score += 3
-    # Acceptance criteria +3
+        score += 2
+    # Acceptance criteria +2
     if result.has_acceptance_criteria:
-        score += 3
+        score += 2
     # TDD +2
     if result.has_tdd:
         score += 2
-    # Deviation protocol +2
+    # Deviation protocol +1
     if result.has_deviation_protocol:
+        score += 1
+    # CI/CD pipeline +2
+    if result.has_ci_config:
+        score += 2
+    # Test suite at root +2
+    if result.has_test_suite:
         score += 2
     return min(score, MAX_SCORES["quality"])
 
@@ -59,31 +69,46 @@ def score_quality(result: ScanResult) -> int:
 def score_autonomy(result: ScanResult) -> int:
     """Autonomy dimension: max 15."""
     score = 0
+    # Crash recovery +3
     if result.has_crash_recovery:
-        score += 4
-    if result.has_stall_detection:
         score += 3
+    # Stall detection +2
+    if result.has_stall_detection:
+        score += 2
+    # Parallel orchestration +3
     if result.has_parallel_orchestration:
         score += 3
+    # Self-improvement +2
     if result.has_self_improvement:
-        score += 3
+        score += 2
+    # Session chaining +2
     if result.has_session_chaining:
         score += 2
+    # Cost/budget tracking +3
+    if result.has_cost_tracking:
+        score += 3
     return min(score, MAX_SCORES["autonomy"])
 
 
 def score_safety(result: ScanResult) -> int:
     """Safety dimension: max 15."""
     score = 0
-    # 1pt per 2 hooks, max 5
-    score += min(result.hook_count // 2, 5)
+    # 1pt per 3 hooks, max 3
+    score += min(result.hook_count // 3, 3)
+    # Destructive blocking +3
     if result.has_destructive_blocking:
         score += 3
+    # Scope enforcement +3
     if result.has_scope_enforcement:
         score += 3
+    # Memory/injection protection +2
     if result.has_memory_protection:
         score += 2
+    # Secrets scanning +2
     if result.has_secrets_scanning:
+        score += 2
+    # Rate limiting / abuse prevention +2
+    if result.has_rate_limiting:
         score += 2
     return min(score, MAX_SCORES["safety"])
 
@@ -91,15 +116,23 @@ def score_safety(result: ScanResult) -> int:
 def score_memory(result: ScanResult) -> int:
     """Memory dimension: max 10."""
     score = 0
+    # Session persistence +2
     if result.has_session_persistence:
-        score += 3
+        score += 2
+    # Structured handoffs +2
     if result.has_structured_handoffs:
         score += 2
+    # Learning extraction +2
     if result.has_learning_extraction:
         score += 2
+    # Pre-compact save +2
     if result.has_pre_compact_save:
         score += 2
+    # Lessons system +1
     if result.has_lessons_system:
+        score += 1
+    # Semantic search +1
+    if result.has_semantic_search:
         score += 1
     return min(score, MAX_SCORES["memory"])
 
@@ -107,10 +140,12 @@ def score_memory(result: ScanResult) -> int:
 def score_skills(result: ScanResult) -> int:
     """Skills dimension: max 10."""
     score = 0
-    # 1pt per 3 skills, max 4
-    score += min(result.skill_count // 3, 4)
+    # 1pt per 7 skills, max 4
+    score += min(result.skill_count // 7, 4)
+    # Structured frontmatter +3
     if result.has_skill_frontmatter:
         score += 3
+    # Trigger definitions +3
     if result.has_trigger_definitions:
         score += 3
     return min(score, MAX_SCORES["skills"])
@@ -119,15 +154,17 @@ def score_skills(result: ScanResult) -> int:
 def score_infra(result: ScanResult) -> int:
     """Infra dimension: max 10."""
     score = 0
-    # 1pt per 3 MCPs, max 4
-    score += min(result.mcp_count // 3, 4)
+    # 1pt per 4 MCPs, max 4
+    score += min(result.mcp_count // 4, 4)
     # Scripts: 5+ = 2, any = 1
     if result.script_count >= 5:
         score += 2
     elif result.script_count > 0:
         score += 1
+    # Templates +2
     if result.has_templates:
         score += 2
+    # Deploy automation +2
     if result.has_deploy_automation:
         score += 2
     return min(score, MAX_SCORES["infra"])

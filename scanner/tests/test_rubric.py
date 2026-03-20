@@ -23,7 +23,7 @@ def _empty() -> ScanResult:
 def _full() -> ScanResult:
     """A maximally-scoring ScanResult."""
     return ScanResult(
-        agent_count=40,
+        agent_count=60,
         has_tool_scoping=True,
         model_tiers={"haiku", "sonnet", "opus"},
         has_per_agent_memory=True,
@@ -32,22 +32,27 @@ def _full() -> ScanResult:
         has_acceptance_criteria=True,
         has_tdd=True,
         has_deviation_protocol=True,
+        has_ci_config=True,
+        has_test_suite=True,
         has_crash_recovery=True,
         has_stall_detection=True,
         has_parallel_orchestration=True,
         has_self_improvement=True,
         has_session_chaining=True,
+        has_cost_tracking=True,
         hook_count=12,
         has_destructive_blocking=True,
         has_scope_enforcement=True,
         has_memory_protection=True,
         has_secrets_scanning=True,
+        has_rate_limiting=True,
         has_session_persistence=True,
         has_structured_handoffs=True,
         has_learning_extraction=True,
         has_pre_compact_save=True,
         has_lessons_system=True,
-        skill_count=22,
+        has_semantic_search=True,
+        skill_count=28,
         has_skill_frontmatter=True,
         has_trigger_definitions=True,
         mcp_count=16,
@@ -70,15 +75,18 @@ class TestScoreAgents:
 
     def test_agent_count_capped(self):
         r = ScanResult(agent_count=100)
-        assert score_agents(r) == 5  # max 5 from count
+        assert score_agents(r) == 6  # max 6 from count (1pt per 10)
 
     def test_model_tiers(self):
         r = ScanResult(model_tiers={"haiku", "sonnet", "opus"})
-        assert score_agents(r) == 3
+        assert score_agents(r) == 2  # 3 tiers = 2pt
+
+    def test_two_tiers(self):
+        r = ScanResult(model_tiers={"haiku", "sonnet"})
+        assert score_agents(r) == 1
 
     def test_full_agents(self):
-        r = _full()
-        assert score_agents(r) == 15
+        assert score_agents(_full()) == 15  # 6+2+4+3
 
     def test_tool_scoping(self):
         r = ScanResult(has_tool_scoping=True)
@@ -95,7 +103,7 @@ class TestScoreQuality:
 
     def test_multi_stage_review(self):
         r = ScanResult(has_review_pipeline=True, review_stages=3)
-        assert score_quality(r) == 8  # 5 + 3
+        assert score_quality(r) == 6  # 4 + 2
 
     def test_full_quality(self):
         assert score_quality(_full()) == 15
@@ -110,7 +118,7 @@ class TestScoreAutonomy:
 
     def test_partial(self):
         r = ScanResult(has_crash_recovery=True, has_stall_detection=True)
-        assert score_autonomy(r) == 7
+        assert score_autonomy(r) == 5  # 3 + 2
 
 
 class TestScoreSafety:
@@ -118,8 +126,8 @@ class TestScoreSafety:
         assert score_safety(_empty()) == 0
 
     def test_hooks_only(self):
-        r = ScanResult(hook_count=10)
-        assert score_safety(r) == 5
+        r = ScanResult(hook_count=9)
+        assert score_safety(r) == 3  # 9//3 = 3, capped at 3
 
     def test_full(self):
         assert score_safety(_full()) == 15
@@ -139,10 +147,10 @@ class TestScoreSkills:
 
     def test_skill_count_capped(self):
         r = ScanResult(skill_count=100)
-        assert score_skills(r) == 4
+        assert score_skills(r) == 4  # max 4 from count (1pt per 7)
 
     def test_full(self):
-        assert score_skills(_full()) == 10
+        assert score_skills(_full()) == 10  # 4+3+3
 
 
 class TestScoreInfra:
@@ -156,7 +164,7 @@ class TestScoreInfra:
         assert score_infra(r2) == 2
 
     def test_full(self):
-        assert score_infra(_full()) == 10
+        assert score_infra(_full()) == 10  # 4+2+2+2
 
 
 class TestScoreSecurity:
