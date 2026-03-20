@@ -1,17 +1,18 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { mockScores } from '@/lib/mock-data'
+import { getScoreById, getScoreByHandle } from '@/lib/supabase'
 import { RadarChart } from '@/components/radar-chart'
 import { DimensionBreakdown } from '@/components/dimension-breakdown'
 import { CopyButton } from './copy-button'
 
 export default async function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const score = mockScores.find((s) => s.id === id)
 
+  let score = await getScoreById(id)
+  if (!score) score = await getScoreByHandle(id)
   if (!score) notFound()
 
-  const badgeUrl = `https://claudebench.dev/api/badge/${score.id}`
+  const badgeUrl = `https://claudebench.dev/api/badge/${score.handle}`
   const profileUrl = `https://claudebench.dev/profile/${score.id}`
   const badgeMarkdown = `![Claude Bench](${badgeUrl})`
 

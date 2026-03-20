@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { mockScores } from '@/lib/mock-data'
+import { getScoreById, getScoreByHandle } from '@/lib/supabase'
 
 function badgeColour(score: number): string {
   if (score >= 80) return '#10b981'
@@ -12,7 +12,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const score = mockScores.find((s) => s.id === id)
+
+  // Try UUID first, then handle
+  let score = await getScoreById(id)
+  if (!score) score = await getScoreByHandle(id)
 
   if (!score) {
     return new NextResponse('Not found', { status: 404 })

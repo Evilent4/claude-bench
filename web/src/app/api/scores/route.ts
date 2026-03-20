@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { mockScores } from '@/lib/mock-data'
+import { getScores, insertScore } from '@/lib/supabase'
 import { DIMENSION_KEYS } from '@/lib/dimensions'
 
 export async function GET(req: NextRequest) {
   const sort = req.nextUrl.searchParams.get('sort') || 'overall'
-  const validSorts = ['overall', ...DIMENSION_KEYS, 'created_at']
-
-  const sortKey = validSorts.includes(sort) ? sort : 'overall'
-
-  const sorted = [...mockScores].sort((a, b) => {
-    const av = a[sortKey as keyof typeof a]
-    const bv = b[sortKey as keyof typeof b]
-    if (typeof av === 'number' && typeof bv === 'number') return bv - av
-    if (typeof av === 'string' && typeof bv === 'string') return bv.localeCompare(av)
-    return 0
-  })
-
-  return NextResponse.json(sorted)
+  const scores = await getScores(sort)
+  return NextResponse.json(scores)
 }
 
 export async function POST(req: NextRequest) {
@@ -40,13 +29,25 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // TODO: Insert into Supabase when connected
-  const created = {
-    id: crypto.randomUUID(),
-    ...body,
-    created_at: new Date().toISOString(),
+  const created = await insertScore({
+    handle: body.handle,
+    overall: body.overall,
+    agents: body.agents,
+    quality: body.quality,
+    autonomy: body.autonomy,
+    safety: body.safety,
+    memory: body.memory,
+    skills: body.skills,
+    infra: body.infra,
+    security: body.security,
+    domain: body.domain,
+    scanner_version: body.scanner_version || '1.0.0',
+    metadata: body.metadata || {},
+  })
+
+  if (!created) {
+    return NextResponse.json({ error: 'Failed to save score' }, { status: 500 })
   }
 
-  console.log('Score submitted:', created)
   return NextResponse.json(created, { status: 201 })
 }

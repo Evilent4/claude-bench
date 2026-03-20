@@ -1,8 +1,10 @@
 import { LeaderboardTable } from '@/components/leaderboard-table'
-import { mockScores } from '@/lib/mock-data'
+import { getScores } from '@/lib/supabase'
 
-export default function Home() {
-  const scores = mockScores
+export const revalidate = 60
+
+export default async function Home() {
+  const scores = await getScores()
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -22,7 +24,7 @@ export default function Home() {
               <code>pip install claude-bench && claude-bench</code>
             </div>
             <a
-              href="https://github.com/arseniigrebenshchikov/claude-bench"
+              href="https://github.com/Evilent4/claude-bench"
               className="inline-flex items-center justify-center h-12 px-6 rounded-lg border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors text-sm font-medium"
             >
               View on GitHub
@@ -74,10 +76,20 @@ export default function Home() {
               Leaderboard
             </h2>
             <span className="text-xs text-zinc-600 font-mono">
-              {scores.length} setups scored
+              {scores.length} {scores.length === 1 ? 'setup' : 'setups'} scored
             </span>
           </div>
-          <LeaderboardTable scores={scores} />
+          {scores.length > 0 ? (
+            <LeaderboardTable scores={scores} />
+          ) : (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-12 text-center">
+              <p className="text-zinc-500 mb-2">No scores yet.</p>
+              <p className="text-sm text-zinc-600">
+                Be the first &mdash; run{' '}
+                <code className="font-mono text-zinc-400">claude-bench --submit --name your-handle</code>
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -86,7 +98,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="text-sm text-zinc-600">Claude Bench</span>
           <div className="flex items-center gap-6 text-sm text-zinc-600">
-            <a href="https://github.com/arseniigrebenshchikov/claude-bench" className="hover:text-zinc-400 transition-colors">
+            <a href="https://github.com/Evilent4/claude-bench" className="hover:text-zinc-400 transition-colors">
               GitHub
             </a>
             <a href="/submit" className="hover:text-zinc-400 transition-colors">
