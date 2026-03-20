@@ -8,7 +8,7 @@ export default async function Home() {
   const scores = await getScores()
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-zinc-950 flex flex-col">
       {/* Hero + How it works combined */}
       <section className="border-b border-zinc-800">
         <div className="max-w-6xl mx-auto px-6 py-12 md:py-16">
@@ -66,8 +66,8 @@ export default async function Home() {
       </section>
 
       {/* Leaderboard */}
-      <section>
-        <div className="max-w-6xl mx-auto px-6 py-10">
+      <section className="flex-1 flex flex-col">
+        <div className="max-w-6xl mx-auto px-6 py-10 w-full flex-1 flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider">
               Leaderboard
@@ -79,7 +79,7 @@ export default async function Home() {
           {scores.length > 0 ? (
             <LeaderboardTable scores={scores} />
           ) : (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-10 text-center">
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-10 text-center flex-1 flex flex-col items-center justify-center">
               <p className="text-zinc-500 mb-1">No scores yet.</p>
               <p className="text-sm text-zinc-600">
                 Be the first &mdash; run{' '}
@@ -91,7 +91,7 @@ export default async function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-800">
+      <footer className="border-t border-zinc-800 mt-auto">
         <div className="max-w-6xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <span className="text-sm text-zinc-600">Claude Bench</span>
           <div className="flex items-center gap-6 text-sm text-zinc-600">
