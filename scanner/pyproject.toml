@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-bench"
+version = "1.0.0"
+description = "Score your Claude Code setup on a 100-point rubric"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = ["httpx>=0.24"]
+
+[project.scripts]
+claude-bench = "claude_bench.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
