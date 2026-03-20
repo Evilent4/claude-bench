@@ -21,7 +21,7 @@ export default async function Home() {
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 font-mono text-sm text-zinc-300 flex items-center gap-3">
               <span className="text-zinc-600 select-none">$</span>
-              <code>pip install claude-bench && claude-bench</code>
+              <code>pipx install claude-bench && claude-bench</code>
             </div>
             <a
               href="https://github.com/Evilent4/claude-bench"
